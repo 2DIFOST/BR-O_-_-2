@@ -1,38 +1,37 @@
 """Command-line interface of the tool."""
 import sys
 
-from .config import MODE_URL, parse_args
+from .config import parse_args
 from .errors import DepGraphError
-from .maven import MavenRepository
-from .pom import parse_coordinate
+from .graph import build_graph
+from .report import format_report
+from .sources import open_source
 
-NO_DEPENDENCIES = "(none)"
+NO_FILTER = "no filter"
 
 
-def print_direct_dependencies(coordinate, dependencies):
-    """Print the direct dependencies of the package."""
-    print(f"Direct dependencies of {coordinate}:")
-    for dependency in dependencies:
-        print(f"  {dependency}")
-    if not dependencies:
-        print(f"  {NO_DEPENDENCIES}")
+def make_title(config):
+    """Return the first line of the report."""
+    name_filter = NO_FILTER
+    if config.name_filter:
+        name_filter = f"filter '{config.name_filter}'"
+    return (f"Dependency graph of {config.package} "
+            f"(max depth {config.max_depth}, {name_filter})")
 
 
 def report_warnings(warnings):
-    """Print warnings of the repository to stderr."""
+    """Print warnings to stderr."""
     for warning in warnings:
         print(f"warning: {warning}", file=sys.stderr)
 
 
 def run(config):
-    """Print the direct dependencies of the configured package."""
-    if config.mode != MODE_URL:
-        raise DepGraphError("test mode is not supported yet")
-    repository = MavenRepository(config.repo)
-    coordinate = parse_coordinate(config.package)
-    dependencies = repository.direct_dependencies(coordinate)
-    print_direct_dependencies(coordinate, dependencies)
-    report_warnings(repository.warnings)
+    """Build the graph of the configured package and print the report."""
+    source, root = open_source(config)
+    graph = build_graph(source, root, config.max_depth, config.name_filter)
+    for line in format_report(graph, make_title(config)):
+        print(line)
+    report_warnings(graph.warnings + source.warnings)
 
 
 def main(argv=None):
