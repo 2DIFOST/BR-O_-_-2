@@ -19,7 +19,6 @@ NETWORK_SCHEMES = ("http", "https")
 COORDINATE_PARTS = 3
 COORDINATE_PART = re.compile(r"[A-Za-z0-9_.\-]+")
 TEST_NAME = re.compile(r"[A-Z]+")
-NO_FILTER = "(none)"
 
 
 @dataclass(frozen=True)
@@ -77,6 +76,7 @@ def build_parser():
         help=f"maximum depth of the analysis (default: {DEFAULT_DEPTH})")
     parser.add_argument(
         "-f", "--filter", dest="name_filter", default="",
+        metavar="SUBSTRING",
         help="skip packages whose name contains this substring")
     return parser
 
@@ -159,14 +159,3 @@ def parse_args(argv):
         name_filter=args.name_filter,
     )
 
-
-def format_config(config):
-    """Return the parameters as key-value lines."""
-    return [
-        f"package: {config.package}",
-        f"repo: {config.repo}",
-        f"mode: {config.mode}",
-        f"output: {config.output}",
-        f"max-depth: {config.max_depth}",
-        f"filter: {config.name_filter or NO_FILTER}",
-    ]

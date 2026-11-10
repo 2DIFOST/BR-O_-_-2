@@ -2,6 +2,7 @@
 import contextlib
 import io
 import os
+import pathlib
 import shutil
 import tempfile
 
@@ -9,6 +10,11 @@ from depgraph.cli import main
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXAMPLES_DIR = os.path.join(PROJECT_DIR, "examples")
+
+
+def file_url(path):
+    """Return the file:// URL of a local path (also on Windows)."""
+    return pathlib.Path(path).resolve().as_uri()
 
 
 def make_temp_dir(test):

@@ -1,5 +1,6 @@
 #!/bin/sh
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ROOT=$(cd "$(dirname "$0")/.." && { pwd -W 2>/dev/null || pwd; })
+REPO_URL="file:///${ROOT#/}/examples/maven-repo"
 
 run() {
     printf '$ depgraph'

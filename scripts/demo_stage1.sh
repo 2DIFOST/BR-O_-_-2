@@ -4,11 +4,8 @@ cd "$ROOT" || exit 1
 TESTREPO=$(mktemp)
 printf 'A:\n' > "$TESTREPO"
 
-echo "== Stage 1: all parameters and defaults"
-run -p org.example:app:1.0.0
-run -p org.example:app:1.0.0 -r https://repo.example.org/maven2 -m url \
-    -o result.png -d 5 -f test
-run -p A -m test -r "$TESTREPO" -d 2
+echo "== Stage 1: description of the parameters"
+run --help
 
 echo "== Stage 1: error handling of every parameter"
 run

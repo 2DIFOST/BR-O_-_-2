@@ -4,7 +4,7 @@ import unittest
 
 from depgraph.config import (
     DEFAULT_DEPTH, DEFAULT_OUTPUT, DEFAULT_REPO, MODE_TEST, MODE_URL,
-    format_config, parse_args,
+    parse_args,
 )
 from depgraph.errors import ConfigError
 from helpers import make_temp_dir, write_file
@@ -133,21 +133,6 @@ class OutputAndLimitsErrorTest(unittest.TestCase):
     def test_unknown_option(self):
         with self.assertRaisesRegex(ConfigError, "unrecognized"):
             parse_args(["-p", "a.b:c:1", "--color"])
-
-
-class FormatTest(unittest.TestCase):
-    """Output of the parameters as key-value lines."""
-
-    def test_key_value_lines(self):
-        config = parse_args(["-p", "a.b:c:1", "-f", "x"])
-        lines = format_config(config)
-        self.assertEqual(lines[0], "package: a.b:c:1")
-        self.assertEqual(lines[-1], "filter: x")
-        self.assertEqual(len(lines), 6)
-
-    def test_empty_filter_is_shown(self):
-        lines = format_config(parse_args(["-p", "a.b:c:1"]))
-        self.assertEqual(lines[-1], "filter: (none)")
 
 
 if __name__ == "__main__":
