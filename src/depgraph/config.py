@@ -31,6 +31,7 @@ class Config:
     output: str
     max_depth: int
     name_filter: str
+    reverse: str = ""
 
 
 class ConfigParser(argparse.ArgumentParser):
@@ -78,6 +79,9 @@ def build_parser():
         "-f", "--filter", dest="name_filter", default="",
         metavar="SUBSTRING",
         help="skip packages whose name contains this substring")
+    parser.add_argument(
+        "-R", "--reverse", default="", metavar="PACKAGE",
+        help="print the packages that depend on PACKAGE in the graph")
     return parser
 
 
@@ -97,6 +101,13 @@ def check_package(package, mode):
             f"invalid package '{package}': "
             "use groupId:artifactId:version")
     return package
+
+
+def check_reverse(target, mode):
+    """Check the package of the reverse mode; empty means it is off."""
+    if not target:
+        return ""
+    return check_package(target, mode)
 
 
 def check_url(repo):
@@ -157,5 +168,6 @@ def parse_args(argv):
         output=check_output(args.output),
         max_depth=args.max_depth,
         name_filter=args.name_filter,
+        reverse=check_reverse(args.reverse, args.mode),
     )
 

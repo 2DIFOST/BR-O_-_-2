@@ -33,3 +33,22 @@ def format_cycles(cycles):
     lines = [f"Cycles: {len(cycles)}"]
     lines.extend(f"  {ARROW.join(cycle)}" for cycle in cycles)
     return lines
+
+
+def format_reverse(reverse, title):
+    """Return the lines that describe the reverse dependencies.
+
+    ``reverse`` is the result of ``reverse_dependencies``; its root is the
+    package whose dependents are listed.
+    """
+    dependents = len(reverse.depth) - 1
+    lines = [title, f"Dependent packages: {dependents}"]
+    for number, level in enumerate(reverse.levels()[1:], start=1):
+        lines.append(f"Level {number}: {', '.join(level)}")
+    if not dependents:
+        lines.append(f"No package depends on {reverse.root}")
+        return lines
+    lines.append("Dependencies:")
+    lines.extend(f"  {dependent}{ARROW}{package}"
+                 for package, dependent in reverse.edges)
+    return lines
