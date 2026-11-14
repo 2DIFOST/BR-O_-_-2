@@ -1,12 +1,14 @@
 """Tests of the command-line interface."""
 import os
 import unittest
+from unittest import mock
 
 from helpers import (
     EXAMPLES_DIR, file_url, make_temp_dir, run_cli, write_file,
 )
 
 REPO_URL = file_url(os.path.join(EXAMPLES_DIR, "maven-repo"))
+DIAMOND = os.path.join(EXAMPLES_DIR, "test-repos", "diamond.txt")
 
 
 class CliErrorTest(unittest.TestCase):
@@ -31,6 +33,54 @@ class CliErrorTest(unittest.TestCase):
             code, _out, err = run_cli(argv)
             self.assertEqual(code, 2, argv)
             self.assertTrue(err.startswith("error: "), argv)
+
+
+class DrawTest(unittest.TestCase):
+    """The option --draw (the real rendering is mocked)."""
+
+    def test_draw_saves_text_and_image(self):
+        image = os.path.join(make_temp_dir(self), "d.png")
+
+        def fake_draw(text, path, renderer):
+            self.assertTrue(text.startswith("flowchart TD"))
+            self.assertEqual(renderer, "online")
+            return path[:-3] + "mmd"
+
+        with mock.patch("depgraph.cli.draw", side_effect=fake_draw):
+            code, out, _err = run_cli([
+                "-p", "A", "-m", "test", "-r", DIAMOND, "--draw", "-o",
+                image, "--renderer", "online"])
+        self.assertEqual(code, 0)
+        self.assertIn(f"Mermaid text: {image[:-3]}mmd", out.splitlines())
+        self.assertIn(f"Image: {image}", out.splitlines())
+
+    def test_nothing_is_drawn_without_the_option(self):
+        with mock.patch("depgraph.cli.draw") as draw:
+            run_cli(["-p", "A", "-m", "test", "-r", DIAMOND])
+        draw.assert_not_called()
+
+    def test_rendering_error_has_code_3(self):
+        directory = make_temp_dir(self)
+        image = os.path.join(directory, "d.png")
+        with mock.patch("shutil.which", return_value=None):
+            code, _out, err = run_cli([
+                "-p", "A", "-m", "test", "-r", DIAMOND, "--draw", "-o",
+                image, "--renderer", "mmdc"])
+        self.assertEqual(code, 3)
+        self.assertTrue(err.startswith("error: mmdc (Mermaid CLI)"))
+        self.assertTrue(os.path.isfile(os.path.join(directory, "d.mmd")))
+
+    def test_draw_and_reverse_are_exclusive(self):
+        code, _out, err = run_cli(
+            ["-p", "A", "-m", "test", "-r", DIAMOND, "--draw", "-R", "D"])
+        self.assertEqual(code, 2)
+        self.assertEqual(
+            err, "error: --draw cannot be combined with --reverse\n")
+
+    def test_unknown_renderer(self):
+        code, _out, _err = run_cli(
+            ["-p", "A", "-m", "test", "-r", DIAMOND, "--renderer", "x"])
+        self.assertEqual(code, 2)
 
 
 class MavenModeTest(unittest.TestCase):

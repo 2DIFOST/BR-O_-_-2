@@ -12,6 +12,7 @@ MODE_TEST = "test"
 MODES = (MODE_URL, MODE_TEST)
 DEFAULT_REPO = "https://repo1.maven.org/maven2"
 DEFAULT_OUTPUT = "graph.png"
+RENDERERS = ("auto", "mmdc", "online")
 DEFAULT_DEPTH = 3
 MIN_DEPTH = 1
 URL_SCHEMES = ("http", "https", "file")
@@ -32,6 +33,8 @@ class Config:
     max_depth: int
     name_filter: str
     reverse: str = ""
+    draw: bool = False
+    renderer: str = "auto"
 
 
 class ConfigParser(argparse.ArgumentParser):
@@ -71,7 +74,8 @@ def build_parser():
         help="url: Maven repository, test: test repository file")
     parser.add_argument(
         "-o", "--output", default=DEFAULT_OUTPUT,
-        help=f"PNG file with the graph (default: {DEFAULT_OUTPUT})")
+        help=f"PNG file with the graph for --draw (default: "
+        f"{DEFAULT_OUTPUT})")
     parser.add_argument(
         "-d", "--max-depth", type=positive_int, default=DEFAULT_DEPTH,
         help=f"maximum depth of the analysis (default: {DEFAULT_DEPTH})")
@@ -82,6 +86,13 @@ def build_parser():
     parser.add_argument(
         "-R", "--reverse", default="", metavar="PACKAGE",
         help="print the packages that depend on PACKAGE in the graph")
+    parser.add_argument(
+        "--draw", action="store_true",
+        help="save the graph as Mermaid text (.mmd) and a PNG image")
+    parser.add_argument(
+        "--renderer", choices=RENDERERS, default="auto",
+        help="how to turn Mermaid into PNG: mmdc (Mermaid CLI), "
+        "online (mermaid.ink) or auto (mmdc if installed)")
     return parser
 
 
@@ -158,6 +169,13 @@ def check_output(output):
     return output
 
 
+def check_draw(args):
+    """Check that drawing is not combined with the reverse mode."""
+    if args.draw and args.reverse:
+        raise ConfigError("--draw cannot be combined with --reverse")
+    return args.draw
+
+
 def parse_args(argv):
     """Parse and validate the command line; return a Config."""
     args = build_parser().parse_args(argv)
@@ -169,5 +187,7 @@ def parse_args(argv):
         max_depth=args.max_depth,
         name_filter=args.name_filter,
         reverse=check_reverse(args.reverse, args.mode),
+        draw=check_draw(args),
+        renderer=args.renderer,
     )
 

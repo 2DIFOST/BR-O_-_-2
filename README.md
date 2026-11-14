@@ -6,8 +6,8 @@
 используются: POM-файлы читаются и разбираются самостоятельно. Приложение
 написано на Python 3.10+ и использует только стандартную библиотеку.
 
-Состояние работы: **этап 4 — дополнительные операции** (обратные
-зависимости).
+Состояние работы: **этап 5 — визуализация** (Mermaid и PNG). Все этапы
+задания выполнены.
 
 ## 1. Общее описание
 
@@ -21,7 +21,8 @@ Maven (по URL `http`, `https` или `file`), строит граф завис
 обрабатываются корректно. Вместо реального репозитория можно указать файл
 тестового репозитория, где пакеты называются большими латинскими буквами.
 Режим `--reverse` печатает обратные зависимости: пакеты, которые зависят
-от заданного.
+от заданного. Опция `--draw` сохраняет граф в виде текста на языке диаграмм
+Mermaid и рисует PNG-изображение.
 
 ## 2. Описание функций и настроек
 
@@ -34,6 +35,8 @@ Maven (по URL `http`, `https` или `file`), строит граф завис
 | `-d`, `--max-depth` | максимальная глубина анализа (целое число ≥ 1)| `3`                 |
 | `-f`, `--filter`    | пропускать пакеты, в имени которых есть строка| пусто (нет фильтра) |
 | `-R`, `--reverse`   | печатать обратные зависимости этого пакета    | выключено           |
+| `--draw`            | сохранить граф как Mermaid-текст и PNG        | выключено           |
+| `--renderer`        | `auto`, `mmdc` или `online` (см. «Визуализация»)| `auto`            |
 
 * `--package`: в режиме `url` — `groupId:artifactId:version`, в режиме
   `test` — имя из больших латинских букв, например `A`;
@@ -50,7 +53,9 @@ Maven (по URL `http`, `https` или `file`), строит граф завис
 * режим: только `url` или `test`;
 * изображение: расширение `.png`, существующий и доступный для записи каталог;
 * глубина: целое число не меньше 1;
-* `--reverse`: имя в том же формате, что у пакета для выбранного режима.
+* `--reverse`: имя в том же формате, что у пакета для выбранного режима;
+* `--renderer`: только `auto`, `mmdc` или `online`;
+* `--draw` нельзя сочетать с `--reverse`.
 
 Граф: корень имеет глубину 0, его прямые зависимости — глубину 1 и так далее.
 Пакеты глубже `--max-depth` не посещаются. Пакет, имя которого (для Maven
@@ -59,7 +64,8 @@ Maven (по URL `http`, `https` или `file`), строит граф завис
 сам анализируемый пакет, это ошибка параметров.
 
 Коды завершения: `0` — успех, `1` — ошибка репозитория (пакет не найден,
-нет сети, неверный POM), `2` — неверные параметры.
+нет сети, неверный POM), `2` — неверные параметры, `3` — не удалось
+нарисовать или сохранить изображение (Mermaid-текст при этом сохраняется).
 
 ### Как читаются зависимости Maven
 
@@ -129,6 +135,35 @@ Dependencies:
   <зависимый пакет> -> <его зависимость>
 ```
 
+### Визуализация
+
+С опцией `--draw` после отчёта выполняются два действия:
+
+1. граф записывается в текстовый файл на языке Mermaid рядом с
+   изображением (`graph.png` → `graph.mmd`);
+2. по этому тексту рисуется PNG-файл с именем из `--output`.
+
+Текст описывает блок-схему `flowchart TD`: каждый пакет — узел `n0`, `n1`, ...
+с полным именем в подписи, каждая зависимость — стрелка `-->` от пакета к его
+зависимости, анализируемый пакет выделен цветом. Циклы видны как стрелки
+«назад». Рисуется тот же граф, что печатает отчёт, с учётом `--max-depth` и
+`--filter`.
+
+Рисованием занимается внешняя программа, на получение зависимостей она не
+влияет. Способ выбирает `--renderer`:
+
+* `mmdc` — Mermaid CLI: `npm install -g @mermaid-js/mermaid-cli` (нужны Node.js
+  и Chromium, который ставит puppeteer); это основной способ;
+* `online` — запрос к сервису mermaid.ink через стандартную библиотеку Python
+  (нужен интернет, длинный граф может не поместиться в адрес запроса);
+* `auto` — `mmdc`, если он есть в `PATH`, иначе `online`.
+
+Если рисование не удалось, печатается `error: ...` и код `3`, а файл `.mmd`
+остаётся: его можно вставить на https://mermaid.live. Файлы `*.png`, `*.mmd` и
+каталог `out/` не хранятся в репозитории (см. `.gitignore`). Mermaid
+по умолчанию ограничивает диаграмму 500 рёбрами, для больших графов
+уменьшайте `--max-depth` или задавайте `--filter`.
+
 ### Вывод
 
 ```text
@@ -153,6 +188,7 @@ sh scripts/demo_stage1.sh      # параметры и ошибки
 sh scripts/demo_stage2.sh      # прямые зависимости
 sh scripts/demo_stage3.sh      # граф, глубина, фильтр, циклы, тестовый режим
 sh scripts/demo_stage4.sh      # обратные зависимости
+sh scripts/demo_stage5.sh      # Mermaid и PNG (каталог out/), нужен mmdc
 sh scripts/demo_all.sh         # все демонстрации подряд (make demo)
 ```
 
@@ -270,6 +306,153 @@ Dependencies:
 error: package X is not in the dependency graph of A
 error: invalid test package 'd': use capital Latin letters, for example A
 ```
+
+### Визуализация: три примера
+
+Команды сохраняют текст и картинку в каталог `out/`:
+
+```bash
+R=file://$PWD/examples/maven-repo
+./run.sh -p org.example:shop-app:1.0.0 -r $R --draw -o out/shop-app.png
+./run.sh -p org.example:report-tool:3.1.0 -r $R -d 5 --draw -o out/report-tool.png
+./run.sh -p org.example:cycle-a:1.0.0 -r $R --draw -o out/cycle-a.png
+```
+
+В последней строке вывода печатаются `Mermaid text: out/shop-app.mmd` и
+`Image: out/shop-app.png`. GitHub рисует блоки `mermaid` прямо в README,
+поэтому ниже тексты тех же диаграмм.
+
+**1. `org.example:shop-app:1.0.0`**: наследование от родительского POM, версия
+из BOM, две версии `common-utils`, отсутствующий в репозитории `ghost`,
+пропущенные `test` и `optional` зависимости.
+
+```mermaid
+flowchart TD
+    n0["org.example:shop-app:1.0.0"]
+    n1["org.example:shop-web:1.0.0"]
+    n2["org.example:shop-db:1.0.0"]
+    n3["org.example:ghost:9.9.9"]
+    n4["org.example:logging-api:1.0.0"]
+    n5["org.example:common-utils:1.2.0"]
+    n6["org.example:json-lib:4.0.0"]
+    n7["org.example:common-utils:1.1.0"]
+    n8["org.example:pool-lib:2.0.0"]
+    n9["org.example:collections-ext:1.0.0"]
+    n0 --> n1
+    n0 --> n2
+    n0 --> n3
+    n0 --> n4
+    n1 --> n5
+    n1 --> n6
+    n1 --> n4
+    n2 --> n7
+    n2 --> n8
+    n2 --> n4
+    n5 --> n9
+    n6 --> n5
+    n8 --> n4
+    classDef root fill:#fde68a,stroke:#b45309,stroke-width:2px
+    class n0 root
+```
+
+**2. `org.example:report-tool:3.1.0`** (`-d 5`): цепочка из шести уровней,
+каждый следующий пакет глубже предыдущего.
+
+```mermaid
+flowchart TD
+    n0["org.example:report-tool:3.1.0"]
+    n1["org.example:report-core:3.1.0"]
+    n2["org.example:common-utils:1.2.0"]
+    n3["org.example:report-render:3.1.0"]
+    n4["org.example:range-lib:1.0"]
+    n5["org.example:collections-ext:1.0.0"]
+    n6["org.example:report-fonts:3.1.0"]
+    n7["org.example:report-fonts-data:3.1.0"]
+    n8["org.example:report-icons:3.1.0"]
+    n0 --> n1
+    n0 --> n2
+    n1 --> n3
+    n1 --> n4
+    n2 --> n5
+    n3 --> n6
+    n6 --> n7
+    n7 --> n8
+    classDef root fill:#fde68a,stroke:#b45309,stroke-width:2px
+    class n0 root
+```
+
+**3. `org.example:cycle-a:1.0.0`**: циклическая зависимость
+`cycle-a -> cycle-b -> cycle-c -> cycle-a`, граф остаётся конечным.
+
+```mermaid
+flowchart TD
+    n0["org.example:cycle-a:1.0.0"]
+    n1["org.example:cycle-b:1.0.0"]
+    n2["org.example:cycle-c:1.0.0"]
+    n3["org.example:logging-api:1.0.0"]
+    n0 --> n1
+    n1 --> n2
+    n2 --> n0
+    n2 --> n3
+    classDef root fill:#fde68a,stroke:#b45309,stroke-width:2px
+    class n0 root
+```
+
+Для тестового репозитория команда такая же, например
+`./run.sh -p A -m test -r examples/test-repos/graph.txt --draw -o out/graph.png`.
+
+### Сравнение со штатным инструментом (Maven)
+
+Штатный способ посмотреть дерево зависимостей — `mvn dependency:tree`.
+Проверка на реальном пакете (нужны Maven и интернет):
+
+```bash
+mkdir compare && cd compare
+cat > pom.xml <<'EOF'
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>demo</groupId><artifactId>compare</artifactId><version>1</version>
+  <dependencies>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.4.14</version>
+    </dependency>
+  </dependencies>
+</project>
+EOF
+mvn dependency:tree
+cd .. && ./run.sh -p ch.qos.logback:logback-classic:1.4.14 -d 10
+```
+
+Расхождения с `mvn dependency:tree` возможны, и все они следствие правил
+Maven, которые инструмент намеренно не повторяет:
+
+* **Несколько версий пакета.** Maven оставляет одну («ближайшее объявление»,
+  при равной глубине — первое в POM). Инструмент делает каждую версию
+  отдельным узлом графа.
+* **Форма результата.** Maven печатает дерево, повторы пропускает или
+  помечает. Инструмент строит граф: общий пакет — один узел с несколькими
+  стрелками.
+* **Глубина и фильтр.** Maven показывает полное дерево и не знает фильтра.
+  Инструмент ограничен `--max-depth`, а `--filter` отбрасывает пакет и всё,
+  что доступно только через него.
+* **`exclusions`, профили, SNAPSHOT.** Maven их учитывает, инструмент нет.
+* **Диапазоны версий.** Maven берёт подходящую версию из метаданных
+  репозитория, инструмент — нижнюю границу.
+* **Отсутствующий POM.** Maven прерывает сборку, инструмент печатает
+  предупреждение и оставляет пакет листом.
+* **Области `test`, `provided` и `optional`.** Зависимости пакета с такими
+  пометками не попадают ни в дерево Maven, ни в граф инструмента.
+
+Пример на локальном репозитории: в графе `shop-app` есть два узла
+`common-utils:1.2.0` (через `shop-web`) и `common-utils:1.1.0` (через
+`shop-db`). На одном уровне Maven оставил бы одну версию, объявленную раньше
+(`1.2.0` через `shop-web`), а версию `1.1.0` пометил как пропущенную из-за
+конфликта. Инструмент показывает обе, потому что строит граф зависимостей,
+а не результат разрешения конфликтов. Если для пакета нет конфликтов версий,
+`exclusions`, диапазонов и профилей, множество пакетов совпадает с деревом
+Maven, различается только форма вывода.
 
 Ошибки:
 

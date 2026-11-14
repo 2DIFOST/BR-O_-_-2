@@ -22,4 +22,6 @@ class PackageNotFoundError(RepositoryError):
 
 
 class OutputError(DepGraphError):
-    """The result cannot be produced or saved."""
+    """The image of the graph cannot be produced or saved."""
+
+    exit_code = 3

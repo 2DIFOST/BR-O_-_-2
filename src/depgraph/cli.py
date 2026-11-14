@@ -4,6 +4,8 @@ import sys
 from .config import parse_args
 from .errors import DepGraphError
 from .graph import build_graph
+from .mermaid import to_mermaid
+from .render import draw
 from .report import format_report, format_reverse
 from .reverse import reverse_dependencies
 from .sources import open_source
@@ -36,6 +38,13 @@ def report_warnings(warnings):
         print(f"warning: {warning}", file=sys.stderr)
 
 
+def draw_graph(config, graph):
+    """Save the Mermaid text and the PNG image of the graph."""
+    text_path = draw(to_mermaid(graph), config.output, config.renderer)
+    print(f"Mermaid text: {text_path}")
+    print(f"Image: {config.output}")
+
+
 def run(config):
     """Build the graph of the configured package and print the report."""
     source, root = open_source(config)
@@ -47,6 +56,8 @@ def run(config):
         lines = format_report(graph, make_title(config))
     for line in lines:
         print(line)
+    if config.draw:
+        draw_graph(config, graph)
     report_warnings(graph.warnings + source.warnings)
 
 
