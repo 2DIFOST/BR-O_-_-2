@@ -454,6 +454,27 @@ Maven, которые инструмент намеренно не повтор�
 `exclusions`, диапазонов и профилей, множество пакетов совпадает с деревом
 Maven, различается только форма вывода.
 
+Результат проверки на реальном пакете `ch.qos.logback:logback-classic:1.4.14`
+(Maven 3.10.1, репозиторий `https://repo.maven.apache.org/maven2`):
+
+```text
+mvn dependency:tree
+\- ch.qos.logback:logback-classic:jar:1.4.14:compile
+   +- ch.qos.logback:logback-core:jar:1.4.14:compile
+   \- org.slf4j:slf4j-api:jar:2.0.7:compile
+```
+
+```text
+./run.sh -p ch.qos.logback:logback-classic:1.4.14 -d 10
+Packages: 3, dependencies: 2
+Level 0: ch.qos.logback:logback-classic:1.4.14
+Level 1: ch.qos.logback:logback-core:1.4.14, org.slf4j:slf4j-api:2.0.7
+```
+
+Множество пакетов и их версии совпадают с деревом Maven. Различается только
+форма вывода: Maven печатает дерево, инструмент группирует пакеты по уровням
+и показывает рёбра графа.
+
 Ошибки:
 
 ```bash
