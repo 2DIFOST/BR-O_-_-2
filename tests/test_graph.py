@@ -66,20 +66,20 @@ class BuildTest(unittest.TestCase):
 class DepthTest(unittest.TestCase):
     """Maximum depth of the analysis."""
 
-    TEXT = "A: B\nB: C\nC: D\nD: E\nE:\n"
+    text = "A: B\nB: C\nC: D\nD: E\nE:\n"
 
     def test_depth_one_gives_direct_dependencies(self):
-        graph = graph_of(self.TEXT, depth=1)
+        graph = graph_of(self.text, depth=1)
         self.assertEqual(graph.edges, [("A", "B")])
         self.assertEqual(list(graph.depth), ["A", "B"])
 
     def test_depth_limits_the_graph(self):
-        graph = graph_of(self.TEXT, depth=3)
+        graph = graph_of(self.text, depth=3)
         self.assertEqual(list(graph.depth), ["A", "B", "C", "D"])
         self.assertEqual(graph.edges[-1], ("C", "D"))
 
     def test_depth_larger_than_graph(self):
-        graph = graph_of(self.TEXT, depth=100)
+        graph = graph_of(self.text, depth=100)
         self.assertEqual(len(graph.depth), 5)
 
 
